@@ -1,0 +1,22 @@
+manymanyfileDS실험에서는 두가지 제한을 가진다.
+
+1. small file
+오직 파일 메타데이터가 SSD 페이지사이즈보다 작은 파일에 한해서 지원
+
+2. 파일당 close는 최대 8번
+SSD 구현이 다 되지 않았으므로, 8번 close만 가능하다.
+
+3. 파일 최대 갯수는 4095개 지원
+
+-ftl_test.c 실험 결과
+4095개 각 create, close후
+4095개 모두 open
+4095개 모두 write(4KB)
+4095개 모두 close
+
+성공
+
+
+4. 함수 내에서 변수를 너무 크게 잡으면 stack 이 초과될 수 있다.
+이 경우 원래라면 segmnentation error이 떠야하지만, Jasmine은 이를 잡지 못함....
+멍청하긴

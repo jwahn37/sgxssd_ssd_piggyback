@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "jasmine.h": "c",
+        "target.h": "c",
+        "sata.h": "c",
+        "sata_cmd.h": "c",
+        "ftl_sgx.h": "c",
+        "mem_util.h": "c",
+        "ecdsa_sgx.h": "c",
+        "sha256_sgx.h": "c",
+        "ftl.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
+}

@@ -1,0 +1,16 @@
+openssd jasmine has someting sad error which is really hard to find.
+I will write that kinds of error here.
+
+1. uart_printf() error
+
+if there is so many uart_printf(), it can geneartes infinite booting error
+//if the number of string in uart_printf() is larger than 57, It generates infinite booting error.
+//ex) uart_printf("111111111122222222223333333333444444444455555555556666666"); //makes error
+
+2. mem_copy() error
+
+Sometime, the mem_copy load from oldest value of source address .
+Maybe it is a DMA problem.. like old cache in dma engine??
+Don't trust mem_copy. 
+
+DRAM to DRAM일때는 Destination이 DRAM_ECC_UNIT의 배수여야만함.
