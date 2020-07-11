@@ -1,2 +1,0 @@
-cs-make
-pause
