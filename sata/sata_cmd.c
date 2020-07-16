@@ -16,17 +16,13 @@
 // along with Jasmine. See the file COPYING.
 // If not, see <http://www.gnu.org/licenses/>.
 
-
 #include "jasmine.h"
-
 
 void ata_check_power_mode(UINT32 lba, UINT32 sector_count)
 {
 	UINT32 fis_type = FISTYPE_REGISTER_D2H;
 	UINT32 flags = B_IRQ;
 	UINT32 status = B_DRDY | BIT4;
-
-	uart_print("[ata_check_power_mode]");
 
 	SETREG(SATA_FIS_D2H_0, fis_type | (flags << 8) | (status << 16));
 	SETREG(SATA_FIS_D2H_1, GETREG(SATA_FIS_H2D_1));
@@ -45,14 +41,12 @@ void ata_check_power_mode(UINT32 lba, UINT32 sector_count)
 
 void ata_flush_cache(UINT32 lba, UINT32 sector_count)
 {
-	uart_print("[ata_flush_cache]");
 	ftl_flush();
 	send_status_to_host(0);
 }
 
 void ata_read_verify_sectors(UINT32 const lba, UINT32 const sector_count)
 {
-	uart_print("[ata_read_verify_sectors]");
 	send_status_to_host(0);
 }
 
@@ -62,53 +56,50 @@ void ata_set_features(UINT32 lba, UINT32 sector_count)
 
 	switch (GETREG(SATA_FIS_H2D_0) >> 24)
 	{
-		case FEATURE_ENABLE_WRITE_CACHE:
-			g_sata_context.write_cache_enabled = TRUE;
-			break;
-		case FEATURE_SET_TRANSFER_MODE:
-			break;
-		case FEATURE_ENABLE_USE_OF_SATA:
-			if ((sector_count & 0xFF) == 0x02)
-			{
-				g_sata_context.dma_setup_auto_activate = TRUE;
-			}
-			break;
-		case FEATURE_DISABLE_READ_LOOK_AHEAD:
-			g_sata_context.read_look_ahead_enabled = FALSE;
-			break;
-		case FEATURE_DISABLE_WRITE_CACHE:
-			g_sata_context.write_cache_enabled = FALSE;
-			break;
-		case FEATURE_DISABLE_USE_OF_SATA:
-			if ((sector_count & 0xFF) == 0x02)
-			{
-				g_sata_context.dma_setup_auto_activate = FALSE;
-			}
-			break;
-		case FEATURE_ENABLE_READ_LOOK_AHEAD:
-			g_sata_context.read_look_ahead_enabled = TRUE;
-			break;
+	case FEATURE_ENABLE_WRITE_CACHE:
+		g_sata_context.write_cache_enabled = TRUE;
+		break;
+	case FEATURE_SET_TRANSFER_MODE:
+		break;
+	case FEATURE_ENABLE_USE_OF_SATA:
+		if ((sector_count & 0xFF) == 0x02)
+		{
+			g_sata_context.dma_setup_auto_activate = TRUE;
+		}
+		break;
+	case FEATURE_DISABLE_READ_LOOK_AHEAD:
+		g_sata_context.read_look_ahead_enabled = FALSE;
+		break;
+	case FEATURE_DISABLE_WRITE_CACHE:
+		g_sata_context.write_cache_enabled = FALSE;
+		break;
+	case FEATURE_DISABLE_USE_OF_SATA:
+		if ((sector_count & 0xFF) == 0x02)
+		{
+			g_sata_context.dma_setup_auto_activate = FALSE;
+		}
+		break;
+	case FEATURE_ENABLE_READ_LOOK_AHEAD:
+		g_sata_context.read_look_ahead_enabled = TRUE;
+		break;
 
-		default:
-			invalid = TRUE;
-			break;
+	default:
+		invalid = TRUE;
+		break;
 	}
 
 	if (invalid)
 	{
-		uart_print("[ata_set_features]");
 		send_status_to_host(B_ABRT);
 	}
 	else
 	{
-		uart_print("[ata_set_features]2");
 		send_status_to_host(0);
 	}
 }
 
 void ata_seek(UINT32 const lba, UINT32 const sector_count)
 {
-	uart_print("[ata_seek]");
 	if (lba > MAX_LBA)
 	{
 		send_status_to_host(B_IDNF);
@@ -121,7 +112,6 @@ void ata_seek(UINT32 const lba, UINT32 const sector_count)
 
 void ata_set_multiple_mode(UINT32 lba, UINT32 sector_count)
 {
-	uart_print("[ata_set_multiple_mode]");
 
 	send_status_to_host(0);
 }
@@ -139,7 +129,6 @@ void ata_write_buffer(UINT32 lba, UINT32 sector_count)
 void ata_standby(UINT32 lba, UINT32 sector_count)
 {
 	ftl_flush();
-uart_print("[ata_standby]");
 
 	send_status_to_host(0);
 }
@@ -147,7 +136,6 @@ uart_print("[ata_standby]");
 void ata_standby_immediate(UINT32 lba, UINT32 sector_count)
 {
 	ftl_flush();
-uart_print("[ata_standby_immediate]");
 
 	send_status_to_host(0);
 }
@@ -155,7 +143,6 @@ uart_print("[ata_standby_immediate]");
 void ata_idle(UINT32 lba, UINT32 sector_count)
 {
 	ftl_flush();
-uart_print("[ata_idle]");
 
 	send_status_to_host(0);
 }
@@ -163,14 +150,12 @@ uart_print("[ata_idle]");
 void ata_idle_immediate(UINT32 lba, UINT32 sector_count)
 {
 	ftl_flush();
-uart_print("[ata_idle_immediate]");
 
 	send_status_to_host(0);
 }
 
 void ata_sleep(UINT32 lba, UINT32 sector_count)
 {
-	uart_print("[ata_sleep]");
 
 	send_status_to_host(0);
 }
@@ -181,7 +166,6 @@ void ata_read_native_max_address(UINT32 lba, UINT32 sector_count)
 	UINT32 flags = B_IRQ;
 	UINT32 status = B_DRDY | BIT4;
 
-	uart_print("[ata_read_native_max_address]");
 	SETREG(SATA_FIS_D2H_0, fis_type | (flags << 8) | (status << 16));
 
 	UINT32 fis_d1 = GETREG(SATA_FIS_H2D_1);
@@ -191,9 +175,9 @@ void ata_read_native_max_address(UINT32 lba, UINT32 sector_count)
 		SETREG(SATA_FIS_D2H_1, (fis_d1 & 0xFF000000) | (MAX_LBA & 0x00FFFFFF));
 		SETREG(SATA_FIS_D2H_2, MAX_LBA >> 24);
 	}
-	else if ((fis_d1 & BIT30) == 0)	// CHS
+	else if ((fis_d1 & BIT30) == 0) // CHS
 	{
-		SETREG(SATA_FIS_D2H_1, 0x003FFF3F | (((UINT32) CHS_HEADS - 1) << 24));
+		SETREG(SATA_FIS_D2H_1, 0x003FFF3F | (((UINT32)CHS_HEADS - 1) << 24));
 		SETREG(SATA_FIS_D2H_2, 0);
 	}
 	else
@@ -216,17 +200,14 @@ void ata_read_native_max_address(UINT32 lba, UINT32 sector_count)
 
 void ata_nop(UINT32 lba, UINT32 sector_count)
 {
-		uart_print("[ata_nop]");
 
 	send_status_to_host(B_ABRT);
 }
 
 void ata_initialize_device_parameters(UINT32 lba, UINT32 sector_count)
 {
-	uart_print("[ata_initialize_device_parameters]");
 	if ((sector_count & 0xFF) == 0)
 	{
-				
 
 		send_status_to_host(B_ABRT);
 	}
@@ -235,15 +216,15 @@ void ata_initialize_device_parameters(UINT32 lba, UINT32 sector_count)
 		g_sata_context.chs_cur_heads = ((GETREG(SATA_FIS_H2D_1) & 0x0F000000) >> 24) + 1;
 		g_sata_context.chs_cur_sectors = sector_count & 0xFF;
 
-		#if MAX_LBA >= CHS_MAX_ADDR
+#if MAX_LBA >= CHS_MAX_ADDR
 		{
-			g_sata_context.chs_cur_cylinders = MIN( CHS_MAX_ADDR/(g_sata_context.chs_cur_heads*g_sata_context.chs_cur_sectors), 65535 );
+			g_sata_context.chs_cur_cylinders = MIN(CHS_MAX_ADDR / (g_sata_context.chs_cur_heads * g_sata_context.chs_cur_sectors), 65535);
 		}
-		#else
+#else
 		{
-			g_sata_context.chs_cur_cylinders = MIN( MAX_LBA/(g_sata_context.chs_cur_heads*g_sata_context.chs_cur_sectors), 65535 );
+			g_sata_context.chs_cur_cylinders = MIN(MAX_LBA / (g_sata_context.chs_cur_heads * g_sata_context.chs_cur_sectors), 65535);
 		}
-		#endif
+#endif
 
 		send_status_to_host(0);
 	}
@@ -251,13 +232,11 @@ void ata_initialize_device_parameters(UINT32 lba, UINT32 sector_count)
 
 void ata_recalibrate(UINT32 lba, UINT32 sector_count)
 {
-	uart_print("[ata_recalibrate]");
 	send_status_to_host(0);
 }
 
 void ata_not_supported(UINT32 lba, UINT32 sector_count)
-{	
-	uart_print("[ata_not_supported]");
+{
 
 	send_status_to_host(B_ABRT);
 }
@@ -266,9 +245,8 @@ void send_status_to_host(UINT32 const err_code)
 {
 	UINT32 fis_type = FISTYPE_REGISTER_D2H;
 	UINT32 flags = B_IRQ;
-	UINT32 status = (err_code == 0) ? (B_DRDY|BIT4) : (B_DRDY|BIT4|B_ERR);
+	UINT32 status = (err_code == 0) ? (B_DRDY | BIT4) : (B_DRDY | BIT4 | B_ERR);
 
-	uart_print("[send_status_to_host]");
 	SETREG(SATA_FIS_D2H_0, fis_type | (flags << 8) | (status << 16) | (err_code << 24));
 	SETREG(SATA_FIS_D2H_1, GETREG(SATA_FIS_H2D_1));
 	SETREG(SATA_FIS_D2H_2, GETREG(SATA_FIS_H2D_2) & 0x00FFFFFF);
@@ -292,8 +270,6 @@ void ata_execute_drive_diagnostics(UINT32 lba, UINT32 sector_count)
 void ata_srst(UINT32 lba, UINT32 sector_count)
 {
 	BOOL32 interrupt = (lba != 0);
-	
-	uart_print("[ata_srst]");
 
 	SETREG(SATA_FIS_D2H_0, 0x01500000 | (interrupt << 14) | FISTYPE_REGISTER_D2H);
 	SETREG(SATA_FIS_D2H_1, 0x00000001);
@@ -312,13 +288,11 @@ void ata_srst(UINT32 lba, UINT32 sector_count)
 	SETREG(SATA_CTRL_2, SEND_NON_DATA_FIS);
 }
 
-
 void pio_sector_transfer(UINT32 const dram_addr, UINT32 const protocol)
 {
 	disable_fiq();
 
-	uart_print("[pio_sector_transfer]");
-	SETREG(SATA_CTRL_3, BIT3);	// switch from Buffer Manager Mode to Manual Mode
+	SETREG(SATA_CTRL_3, BIT3); // switch from Buffer Manager Mode to Manual Mode
 	SETREG(SATA_MANUAL_MODE_ADDR, dram_addr - DRAM_BASE);
 
 	UINT32 fis_type = FISTYPE_PIO_SETUP;
@@ -346,13 +320,15 @@ void pio_sector_transfer(UINT32 const dram_addr, UINT32 const protocol)
 		SETREG(SATA_CTRL_2, PIO_WRITE);
 	}
 
-	while ((GETREG(SATA_INT_STAT) & (OPERATION_OK | OPERATION_ERR)) == 0);
+	while ((GETREG(SATA_INT_STAT) & (OPERATION_OK | OPERATION_ERR)) == 0)
+		;
 
 	if (PIO_H2D == protocol)
 	{
 		// Even though the while() statement above guarantees that SATA protocol is finished,
 		// still there is a possibility that internal DMA [FIFO -> SDRAM] is not completed.
-		while (GETREG(SATA_FIFO_1_STATUS) & 0x007F0000);
+		while (GETREG(SATA_FIFO_1_STATUS) & 0x007F0000)
+			;
 	}
 
 	SETREG(SATA_INT_STAT, OPERATION_OK | OPERATION_ERR);
@@ -365,9 +341,6 @@ void pio_sector_transfer(UINT32 const dram_addr, UINT32 const protocol)
 
 	if (protocol == PIO_H2D)
 	{
-			uart_print("[pio_sector_transfer]");
-
 		send_status_to_host(0);
 	}
 }
-

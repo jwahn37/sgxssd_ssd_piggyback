@@ -26,6 +26,7 @@ volatile UINT32 g_sata_action_flags;
 #define HW_EQ_MARGIN 4
 
 extern UINT32 g_ftl_write_buf_id;
+extern UINT32 g_ftl_read_buf_id;
 int write_cnt = 0;
 int read_cnt = 0;
 int sgxssd = 0;
@@ -137,8 +138,27 @@ void Main(void)
 				fid = (recv_meta & 0XFFFF0000) >> 4;
 
 				uart_printf("recv time/fd %d %d", recovery_time, fid);
-				ftl_read(cmd.lba, cmd.sector_count);
+
+				UINT32 head_lba = cmd.lba;
+				UINT8 *offset_pointer = RD_BUF_PTR((g_ftl_read_buf_id) % NUM_RD_BUFFERS) + ((head_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
+
+				uart_printf("lba/size 0x%x/%u", cmd.lba, cmd.sector_count);
+				offset = 0x11111111;
+				write_dram_32((UINT32)offset_pointer, offset);
+
+				//uart_printf("bf ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));
+				
+				//첫번째 페이지는 offset이 저장되었으므로 두번째 페이지로 이동.
+				UINT32 next_read_buf_id = (g_ftl_read_buf_id + 1) % NUM_RD_BUFFERS;
+				while (next_read_buf_id == GETREG(SATA_RBUF_PTR)); // wait if the read buffer is full (slow host)
+				SETREG(BM_STACK_RDSET, next_read_buf_id); // change bm_read_limit
+				SETREG(BM_STACK_RESET, 0x02);			  // change bm_read_limit
+
+				g_ftl_read_buf_id = next_read_buf_id;
+
+				ftl_read(cmd.lba, cmd.sector_count - SECTORS_PER_PAGE);
 				offset = 0x37373737;
+				write_dram_32((UINT32)offset_pointer, offset);
 			}
 
 			else if (cmd.cmd_type == CMD_SGXSSD_WRITE_NOR || cmd.cmd_type == CMD_SGXSSD_WRITE_EXT)
@@ -277,7 +297,6 @@ void Main(void)
 			slow_cmd_t *slow_cmd = &g_sata_context.slow_cmd;
 			slow_cmd->status = SLOW_CMD_STATUS_BUSY;
 
-			uart_print("call ata");
 			ata_function = search_ata_function(slow_cmd->code);
 			ata_function(slow_cmd->lba, slow_cmd->sector_count);
 
