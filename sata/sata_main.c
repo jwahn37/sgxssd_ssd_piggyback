@@ -134,7 +134,7 @@ void Main(void)
 			{
 
 				recovery_time = recv_meta & 0x0000FFFF;
-				fid = (recv_meta & 0XFFFF0000) >> 4;
+				fid = (recv_meta & 0XFFFF0000) >> 16;
 
 				uart_printf("recv time/fd %x %x", recovery_time, fid);
 
