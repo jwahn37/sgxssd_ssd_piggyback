@@ -141,7 +141,7 @@ void Main(void)
 				UINT32 head_lba = cmd.lba;
 				UINT8 *offset_pointer = RD_BUF_PTR((g_ftl_read_buf_id) % NUM_RD_BUFFERS) + ((head_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
 
-				uart_printf("lba/size 0x%x/%u", cmd.lba, cmd.sector_count);
+				uart_printf("lba/size/offset 0x%x/%u/%d", cmd.lba, cmd.sector_count, offset);
 				//offset = 0x11111111;
 				write_dram_32((UINT32)offset_pointer, offset);
 				offset += 32768;

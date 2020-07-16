@@ -247,7 +247,7 @@ static __inline void handle_got_cfis(void)
 				//reserved space에서 2바이트씩 받는걸로. main.c에서 어차피 다시 받음.
 				recovery_time = GETREG(SATA_FIS_H2D_4) & 0x0000FFFF;
 				fd = (GETREG(SATA_FIS_H2D_4) & 0xFFFF0000) >> 4;
-				queue_push(lba, sector_count, cmd_code, recovery_time);
+				queue_push(lba, sector_count, cmd_code, GETREG(SATA_FIS_H2D_4));
 			}	
 			else
 			{
