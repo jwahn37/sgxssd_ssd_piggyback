@@ -97,10 +97,10 @@ ATR_NO_SECT|ATR_LBA_EXT	| 	CCL_OTHER,			// 0x37	Set Max Address Ext
 							CCL_UNDEFINED,		// 0x47
 			ATR_LBA_NOR |	CCL_FTL_H2D,		// 0x48 SGXSSD write command(NOR)
 			ATR_LBA_EXT |	CCL_FTL_H2D,		// 0x49 SGXSSD write command(EXT)
-							CCL_UNDEFINED,		// 0x4A
-							CCL_UNDEFINED,		// 0x4B
-							CCL_UNDEFINED,		// 0x4C
-							CCL_UNDEFINED,		// 0x4D
+			ATR_LBA_NOR |	CCL_FTL_D2H,		// 0x4A SGXSSD recovery command(NOR)
+			ATR_LBA_EXT |	CCL_FTL_D2H,		// 0x4B SGXSSD recovery command(EXT)
+			ATR_LBA_NOR |	CCL_FTL_D2H,		// 0x4C SGXSSD all recovery command(NOR)
+			ATR_LBA_EXT |	CCL_FTL_D2H,		// 0x4D SGXSSD all recovery command(EXT)
 							CCL_UNDEFINED,		// 0x4E
 							CCL_UNDEFINED,		// 0x4F
 							CCL_UNDEFINED,		// 0x50

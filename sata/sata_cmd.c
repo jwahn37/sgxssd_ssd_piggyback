@@ -26,6 +26,8 @@ void ata_check_power_mode(UINT32 lba, UINT32 sector_count)
 	UINT32 flags = B_IRQ;
 	UINT32 status = B_DRDY | BIT4;
 
+	uart_print("[ata_check_power_mode]");
+
 	SETREG(SATA_FIS_D2H_0, fis_type | (flags << 8) | (status << 16));
 	SETREG(SATA_FIS_D2H_1, GETREG(SATA_FIS_H2D_1));
 	SETREG(SATA_FIS_D2H_2, GETREG(SATA_FIS_H2D_2) & 0x00FFFFFF);
@@ -43,12 +45,14 @@ void ata_check_power_mode(UINT32 lba, UINT32 sector_count)
 
 void ata_flush_cache(UINT32 lba, UINT32 sector_count)
 {
+	uart_print("[ata_flush_cache]");
 	ftl_flush();
 	send_status_to_host(0);
 }
 
 void ata_read_verify_sectors(UINT32 const lba, UINT32 const sector_count)
 {
+	uart_print("[ata_read_verify_sectors]");
 	send_status_to_host(0);
 }
 
@@ -92,16 +96,19 @@ void ata_set_features(UINT32 lba, UINT32 sector_count)
 
 	if (invalid)
 	{
+		uart_print("[ata_set_features]");
 		send_status_to_host(B_ABRT);
 	}
 	else
 	{
+		uart_print("[ata_set_features]2");
 		send_status_to_host(0);
 	}
 }
 
 void ata_seek(UINT32 const lba, UINT32 const sector_count)
 {
+	uart_print("[ata_seek]");
 	if (lba > MAX_LBA)
 	{
 		send_status_to_host(B_IDNF);
@@ -114,6 +121,8 @@ void ata_seek(UINT32 const lba, UINT32 const sector_count)
 
 void ata_set_multiple_mode(UINT32 lba, UINT32 sector_count)
 {
+	uart_print("[ata_set_multiple_mode]");
+
 	send_status_to_host(0);
 }
 
@@ -130,6 +139,7 @@ void ata_write_buffer(UINT32 lba, UINT32 sector_count)
 void ata_standby(UINT32 lba, UINT32 sector_count)
 {
 	ftl_flush();
+uart_print("[ata_standby]");
 
 	send_status_to_host(0);
 }
@@ -137,6 +147,7 @@ void ata_standby(UINT32 lba, UINT32 sector_count)
 void ata_standby_immediate(UINT32 lba, UINT32 sector_count)
 {
 	ftl_flush();
+uart_print("[ata_standby_immediate]");
 
 	send_status_to_host(0);
 }
@@ -144,6 +155,7 @@ void ata_standby_immediate(UINT32 lba, UINT32 sector_count)
 void ata_idle(UINT32 lba, UINT32 sector_count)
 {
 	ftl_flush();
+uart_print("[ata_idle]");
 
 	send_status_to_host(0);
 }
@@ -151,12 +163,15 @@ void ata_idle(UINT32 lba, UINT32 sector_count)
 void ata_idle_immediate(UINT32 lba, UINT32 sector_count)
 {
 	ftl_flush();
+uart_print("[ata_idle_immediate]");
 
 	send_status_to_host(0);
 }
 
 void ata_sleep(UINT32 lba, UINT32 sector_count)
 {
+	uart_print("[ata_sleep]");
+
 	send_status_to_host(0);
 }
 
@@ -166,6 +181,7 @@ void ata_read_native_max_address(UINT32 lba, UINT32 sector_count)
 	UINT32 flags = B_IRQ;
 	UINT32 status = B_DRDY | BIT4;
 
+	uart_print("[ata_read_native_max_address]");
 	SETREG(SATA_FIS_D2H_0, fis_type | (flags << 8) | (status << 16));
 
 	UINT32 fis_d1 = GETREG(SATA_FIS_H2D_1);
@@ -200,13 +216,18 @@ void ata_read_native_max_address(UINT32 lba, UINT32 sector_count)
 
 void ata_nop(UINT32 lba, UINT32 sector_count)
 {
+		uart_print("[ata_nop]");
+
 	send_status_to_host(B_ABRT);
 }
 
 void ata_initialize_device_parameters(UINT32 lba, UINT32 sector_count)
 {
+	uart_print("[ata_initialize_device_parameters]");
 	if ((sector_count & 0xFF) == 0)
 	{
+				
+
 		send_status_to_host(B_ABRT);
 	}
 	else
@@ -230,11 +251,14 @@ void ata_initialize_device_parameters(UINT32 lba, UINT32 sector_count)
 
 void ata_recalibrate(UINT32 lba, UINT32 sector_count)
 {
+	uart_print("[ata_recalibrate]");
 	send_status_to_host(0);
 }
 
 void ata_not_supported(UINT32 lba, UINT32 sector_count)
-{
+{	
+	uart_print("[ata_not_supported]");
+
 	send_status_to_host(B_ABRT);
 }
 
@@ -244,6 +268,7 @@ void send_status_to_host(UINT32 const err_code)
 	UINT32 flags = B_IRQ;
 	UINT32 status = (err_code == 0) ? (B_DRDY|BIT4) : (B_DRDY|BIT4|B_ERR);
 
+	uart_print("[send_status_to_host]");
 	SETREG(SATA_FIS_D2H_0, fis_type | (flags << 8) | (status << 16) | (err_code << 24));
 	SETREG(SATA_FIS_D2H_1, GETREG(SATA_FIS_H2D_1));
 	SETREG(SATA_FIS_D2H_2, GETREG(SATA_FIS_H2D_2) & 0x00FFFFFF);
@@ -267,6 +292,8 @@ void ata_execute_drive_diagnostics(UINT32 lba, UINT32 sector_count)
 void ata_srst(UINT32 lba, UINT32 sector_count)
 {
 	BOOL32 interrupt = (lba != 0);
+	
+	uart_print("[ata_srst]");
 
 	SETREG(SATA_FIS_D2H_0, 0x01500000 | (interrupt << 14) | FISTYPE_REGISTER_D2H);
 	SETREG(SATA_FIS_D2H_1, 0x00000001);
@@ -290,6 +317,7 @@ void pio_sector_transfer(UINT32 const dram_addr, UINT32 const protocol)
 {
 	disable_fiq();
 
+	uart_print("[pio_sector_transfer]");
 	SETREG(SATA_CTRL_3, BIT3);	// switch from Buffer Manager Mode to Manual Mode
 	SETREG(SATA_MANUAL_MODE_ADDR, dram_addr - DRAM_BASE);
 
@@ -337,6 +365,8 @@ void pio_sector_transfer(UINT32 const dram_addr, UINT32 const protocol)
 
 	if (protocol == PIO_H2D)
 	{
+			uart_print("[pio_sector_transfer]");
+
 		send_status_to_host(0);
 	}
 }

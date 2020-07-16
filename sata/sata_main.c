@@ -28,21 +28,24 @@ volatile UINT32 g_sata_action_flags;
 extern UINT32 g_ftl_write_buf_id;
 int write_cnt = 0;
 int read_cnt = 0;
-int sgxssd =0 ;
+int sgxssd = 0;
 static UINT32 ptr_diff(UINT32 ftl_id, UINT32 sata_id);
+
+UINT32 isRecoveryCmd(UINT32 cmd_code);
 
 static UINT32 queue_isEmpty()
 {
 	return (eveq_front == eveq_rear);
 }
 
-static UINT32 queue_pop(UINT32 *lba, UINT32 *sector_count, UINT32 *cmd_type)
+static UINT32 queue_pop(UINT32 *lba, UINT32 *sector_count, UINT32 *cmd_type, UINT32 *recv_meta)
 {
 	if (!queue_isEmpty())
 	{
 		*lba = eve_q[eveq_front].lba;
 		*sector_count = eve_q[eveq_front].sector_count;
 		*cmd_type = eve_q[eveq_front].cmd_type;
+		*recv_meta = eve_q[eveq_front].sgx_fd;
 		//	*key = eve_q[eveq_front].key;
 
 		eveq_front = (eveq_front + 1) % Q_SIZE;
@@ -56,7 +59,7 @@ static UINT32 eventq_get_count(void)
 	return (GETREG(SATA_EQ_STATUS) >> 16) & 0xFF;
 }
 
-static void eventq_get(CMD_T *cmd)
+static void eventq_get(CMD_T *cmd, UINT32 *recv_meta)
 {
 	disable_fiq();
 
@@ -71,7 +74,7 @@ static void eventq_get(CMD_T *cmd)
 	//cmd->lba			= EQReadData1 & 0x3FFFFFFF;
 	//cmd->sector_count	= EQReadData0 >> 16;
 	//cmd->cmd_type		= EQReadData1 >> 31;
-	queue_pop(&(cmd->lba), &(cmd->sector_count), &(cmd->cmd_type));
+	queue_pop(&(cmd->lba), &(cmd->sector_count), &(cmd->cmd_type), recv_meta);
 	if (cmd->sector_count == 0)
 		cmd->sector_count = 0x10000;
 
@@ -105,15 +108,20 @@ __inline ATA_FUNCTION_T search_ata_function(UINT32 command_code)
 
 void Main(void)
 {
+	UINT32 recovery_time;
+	UINT32 fid;
+	UINT32 offset;
+
 	while (1)
 	{
 		if (eventq_get_count())
 		{
 			CMD_T cmd;
+			UINT32 recv_meta;
 
-			eventq_get(&cmd);
+			eventq_get(&cmd, &recv_meta);
 			//uart_printf("pop Q cmd_type: %d lba %d size %d", cmd.cmd_type, cmd.lba, cmd.sector_count);
-			sgxssd=0;
+			sgxssd = 0;
 			if (cmd.cmd_type == READ)
 			{
 				//	read_cnt++;
@@ -121,75 +129,82 @@ void Main(void)
 				//		uart_printf("rd%d", read_cnt);
 				ftl_read(cmd.lba, cmd.sector_count);
 			}
-			else
+
+			else if (isRecoveryCmd(cmd.cmd_type))
 			{
-				if (cmd.cmd_type == CMD_SGXSSD_WRITE_NOR || cmd.cmd_type == CMD_SGXSSD_WRITE_EXT)
-				{
-					//tail sector
-					// UINT32 tail_lba = cmd.lba + cmd.sector_count - 1;
-					// UINT32 tail_pageidx = ((cmd.lba % SECTORS_PER_PAGE) + (cmd.sector_count - 1)) / SECTORS_PER_PAGE;
-					// UINT8 *piggyback_pointer = WR_BUF_PTR((g_ftl_write_buf_id + tail_pageidx) % NUM_WR_BUFFERS) + ((tail_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
-				 	// UINT32 fid, offset, pid;
-					 UINT32 pid2, fid2, offset2;
 
+				recovery_time = recv_meta & 0x0000FFFF;
+				fid = (recv_meta & 0XFFFF0000) >> 4;
 
-					//tail page
-					// UINT32 tail_lba = cmd.lba + cmd.sector_count - 8; //4096/512
- 					// UINT32 tail_pageidx = ((cmd.lba % SECTORS_PER_PAGE) + (cmd.sector_count - 8)) / SECTORS_PER_PAGE;
-					// UINT8 *piggyback_pointer = WR_BUF_PTR((g_ftl_write_buf_id + tail_pageidx) % NUM_WR_BUFFERS) + ((tail_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
-					
+				uart_printf("recv time/fd %d %d", recovery_time, fid);
+				ftl_read(cmd.lba, cmd.sector_count);
+				offset = 0x37373737;
+			}
 
+			else if (cmd.cmd_type == CMD_SGXSSD_WRITE_NOR || cmd.cmd_type == CMD_SGXSSD_WRITE_EXT)
+			{
+				//tail sector
+				// UINT32 tail_lba = cmd.lba + cmd.sector_count - 1;
+				// UINT32 tail_pageidx = ((cmd.lba % SECTORS_PER_PAGE) + (cmd.sector_count - 1)) / SECTORS_PER_PAGE;
+				// UINT8 *piggyback_pointer = WR_BUF_PTR((g_ftl_write_buf_id + tail_pageidx) % NUM_WR_BUFFERS) + ((tail_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
+				// UINT32 fid, offset, pid;
+				UINT32 pid2, fid2, offset2;
 
-					//예외 처리.
-					//만일 SATA id가 FTL id을 초과하기 위해 접근하는 경우라면, 에러 발생함.
-					//그런일이 없길 바람.
-					//기본적으로 sata id 가 ftl id보다 선행되어야 하나, ftl id가 1만큼 더 큰 예외케이스가 발생함.
-					
-					//uart_printf("bf ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), tail_pageidx);
- 
-					// while (((g_ftl_write_buf_id+NUM_WR_BUFFERS-1)%NUM_WR_BUFFERS) == GETREG(SATA_WBUF_PTR));
-					// //DMA로부터 모든 값을 write buffer에 읽어올떄까지 기다린다. 
-					// while( ptr_diff(g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR)) <= tail_pageidx );
-					// //uart_printf("af ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), tail_pageidx);
-					
-					// //HMAC_DELAY(1000);
+				//tail page
+				// UINT32 tail_lba = cmd.lba + cmd.sector_count - 8; //4096/512
+				// UINT32 tail_pageidx = ((cmd.lba % SECTORS_PER_PAGE) + (cmd.sector_count - 8)) / SECTORS_PER_PAGE;
+				// UINT8 *piggyback_pointer = WR_BUF_PTR((g_ftl_write_buf_id + tail_pageidx) % NUM_WR_BUFFERS) + ((tail_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
 
-					// pid = read_dram_32((UINT32)piggyback_pointer);
-					// fid = read_dram_32((UINT32)(&piggyback_pointer[4]));
-					// offset = read_dram_32((UINT32)(&piggyback_pointer[8]));
+				//예외 처리.
+				//만일 SATA id가 FTL id을 초과하기 위해 접근하는 경우라면, 에러 발생함.
+				//그런일이 없길 바람.
+				//기본적으로 sata id 가 ftl id보다 선행되어야 하나, ftl id가 1만큼 더 큰 예외케이스가 발생함.
 
+				//uart_printf("bf ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), tail_pageidx);
 
+				// while (((g_ftl_write_buf_id+NUM_WR_BUFFERS-1)%NUM_WR_BUFFERS) == GETREG(SATA_WBUF_PTR));
+				// //DMA로부터 모든 값을 write buffer에 읽어올떄까지 기다린다.
+				// while( ptr_diff(g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR)) <= tail_pageidx );
+				// //uart_printf("af ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), tail_pageidx);
+
+				// //HMAC_DELAY(1000);
+
+				// pid = read_dram_32((UINT32)piggyback_pointer);
+				// fid = read_dram_32((UINT32)(&piggyback_pointer[4]));
+				// offset = read_dram_32((UINT32)(&piggyback_pointer[8]));
 
 				//header
 				//	wait until SATA transfer the data.
 				//	만일 SATA가 FTL을 초과하기 위해 접근하는 경우라면, 에러 발생함.
 				//	그런일이 없길 바람.
 				//	uart_print("start");
-					while (((g_ftl_write_buf_id+NUM_WR_BUFFERS-1)%NUM_WR_BUFFERS) == GETREG(SATA_WBUF_PTR));
-					
-					UINT32 head_lba = cmd.lba;
-					//UINT32 head_pageidx = ((cmd.lba % SECTORS_PER_PAGE) + (cmd.sector_count - 8)) / SECTORS_PER_PAGE;
-					UINT8 *piggyback_pointer = WR_BUF_PTR((g_ftl_write_buf_id) % NUM_WR_BUFFERS) + ((head_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
+				while (((g_ftl_write_buf_id + NUM_WR_BUFFERS - 1) % NUM_WR_BUFFERS) == GETREG(SATA_WBUF_PTR))
+					;
 
-					UINT32 fid, offset, pid;
-					pid = read_dram_32((UINT32)piggyback_pointer);
-					fid = read_dram_32((UINT32)(&piggyback_pointer[4]));
-					offset = read_dram_32((UINT32)(&piggyback_pointer[8]));
+				UINT32 head_lba = cmd.lba;
+				//UINT32 head_pageidx = ((cmd.lba % SECTORS_PER_PAGE) + (cmd.sector_count - 8)) / SECTORS_PER_PAGE;
+				UINT8 *piggyback_pointer = WR_BUF_PTR((g_ftl_write_buf_id) % NUM_WR_BUFFERS) + ((head_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
 
-				//	uart_printf("bf ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));				
+				UINT32 fid, offset, pid;
+				pid = read_dram_32((UINT32)piggyback_pointer);
+				fid = read_dram_32((UINT32)(&piggyback_pointer[4]));
+				offset = read_dram_32((UINT32)(&piggyback_pointer[8]));
 
-					//첫번째 page는 piggyback set이므로 두번째 page부터 실제 데이터 존재.
-					while (g_ftl_write_buf_id == GETREG(SATA_WBUF_PTR));
-					g_ftl_write_buf_id = (g_ftl_write_buf_id + 1) % NUM_WR_BUFFERS;		// Circular buffer
-					//SETREG(BM_STACK_WRSET, g_ftl_write_buf_id);	// change bm_write_limit
-					//SETREG(BM_STACK_RESET, 0x01);				// change bm_write_limit
-					
-					//SETREG(BM_STACK_WRSET, GETREG(BM_WRITE_LIMIT)+1);	// change bm_write_limit
-					//SETREG(BM_STACK_RESET, 0x01);				// change bm_write_limit
+				//	uart_printf("bf ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));
 
-				//	uart_printf("af ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));				
-					sgxssd=1;
-						/*
+				//첫번째 page는 piggyback set이므로 두번째 page부터 실제 데이터 존재.
+				while (g_ftl_write_buf_id == GETREG(SATA_WBUF_PTR))
+					;
+				g_ftl_write_buf_id = (g_ftl_write_buf_id + 1) % NUM_WR_BUFFERS; // Circular buffer
+				//SETREG(BM_STACK_WRSET, g_ftl_write_buf_id);	// change bm_write_limit
+				//SETREG(BM_STACK_RESET, 0x01);				// change bm_write_limit
+
+				//SETREG(BM_STACK_WRSET, GETREG(BM_WRITE_LIMIT)+1);	// change bm_write_limit
+				//SETREG(BM_STACK_RESET, 0x01);				// change bm_write_limit
+
+				//	uart_printf("af ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));
+				sgxssd = 1;
+				/*
 				UINT32 data_end = (((sgx_param.offset / BYTES_PER_SECTOR) % SECTORS_PER_PAGE) + (sector_count-1));	//ftl_write할 page 내 write buffer end point (이후 메타데이터포홤)
 				UINT32 num_page = data_end / SECTORS_PER_PAGE;	//0 or 1
 				UINT8* data = DS_extract_mac_version(sgx_param.offset+((sector_count-1)*512), mac, &version, num_page);	//마지막부분에 저장된다.
@@ -199,44 +214,43 @@ void Main(void)
 				//	uart_printf("P_Write : 0x%lx, %d", cmd.lba, cmd.sector_count);
 				//	uart_printf("tail lba 0x%x, page idx: %d, pg %d", tail_lba, tail_pageidx,tp);
 				//	uart_printf("1 0x%x 0x%x %d", pid, fid, offset);
-				
-					if(pid==0x11223344);
-					//	uart_print("1good");
-					else
-					{
-						uart_print("1bad");
-					}
-					
+
+				if (pid == 0x11223344)
+					;
+				//	uart_print("1good");
+				else
+				{
+					uart_print("1bad");
+				}
+
 				//	uart_printf("%x %x %x %x", read_dram_8((UINT32)piggyback_pointer), read_dram_8((UINT32)(&piggyback_pointer[1])), read_dram_8((UINT32)(&piggyback_pointer[2])), read_dram_8((UINT32)(&piggyback_pointer[3])));
 				//	ftl_write(cmd.lba, cmd.sector_count - 1);	//tail (sector)
 				//	ftl_write(cmd.lba, cmd.sector_count - 8);	//tail
 				//	ftl_write(cmd.lba+8, cmd.sector_count - 8);
-					ftl_write(cmd.lba, cmd.sector_count - SECTORS_PER_PAGE);	//head
+				ftl_write(cmd.lba, cmd.sector_count - SECTORS_PER_PAGE); //head
 
-				//	uart_printf("last ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));				
+				//	uart_printf("last ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));
 
 				//	uart_printf("%d",g_ftl_write_buf_id);
 
-					//추가적인 piggyback 섹터로 인한 페이지 초과시 g_ftl_write_id를 인위적으로 조정해주어야함.
-					//if (tail_lba % SECTORS_PER_PAGE == 0)
-
-					
+				//추가적인 piggyback 섹터로 인한 페이지 초과시 g_ftl_write_id를 인위적으로 조정해주어야함.
+				//if (tail_lba % SECTORS_PER_PAGE == 0)
 
 				//	if (((tail_lba % SECTORS_PER_PAGE) == 0) || ((tail_lba % SECTORS_PER_PAGE) > (SECTORS_PER_PAGE - 8)))	//1-56까지의 범위는 page boundary를 초과하지 않음.
-					// if (((tail_lba % SECTORS_PER_PAGE) == 0))	//1-56까지의 범위는 page boundary를 초과하지 않음.
-					// {
-					// 	//uart_print("pgboundary");
-					// 	flash_finish();
-					// 	while (g_ftl_write_buf_id == GETREG(SATA_WBUF_PTR))
-					// 		;															// bm_write_limit should not outpace SATA_WBUF_PTR
-					// 	g_ftl_write_buf_id = (g_ftl_write_buf_id + 1) % NUM_WR_BUFFERS; // Circular buffer
-					// 	SETREG(BM_STACK_WRSET, g_ftl_write_buf_id);						// change bm_write_limit
-					// 	SETREG(BM_STACK_RESET, 0x01);									// change bm_write_limit
-					// }
-					// else{
-					// 	;//uart_print("Not pgboundary");
-					// }
-/*
+				// if (((tail_lba % SECTORS_PER_PAGE) == 0))	//1-56까지의 범위는 page boundary를 초과하지 않음.
+				// {
+				// 	//uart_print("pgboundary");
+				// 	flash_finish();
+				// 	while (g_ftl_write_buf_id == GETREG(SATA_WBUF_PTR))
+				// 		;															// bm_write_limit should not outpace SATA_WBUF_PTR
+				// 	g_ftl_write_buf_id = (g_ftl_write_buf_id + 1) % NUM_WR_BUFFERS; // Circular buffer
+				// 	SETREG(BM_STACK_WRSET, g_ftl_write_buf_id);						// change bm_write_limit
+				// 	SETREG(BM_STACK_RESET, 0x01);									// change bm_write_limit
+				// }
+				// else{
+				// 	;//uart_print("Not pgboundary");
+				// }
+				/*
 					pid2 = read_dram_32((UINT32)piggyback_pointer);
 					fid2 = read_dram_32((UINT32)(&piggyback_pointer[4]));
 					offset2 = read_dram_32((UINT32)(&piggyback_pointer[8]));
@@ -249,12 +263,11 @@ void Main(void)
 						uart_print("2bad");
 					}
 */
-				}
+			}
 
-				else
-				{
-					ftl_write(cmd.lba, cmd.sector_count);
-				}
+			else
+			{
+				ftl_write(cmd.lba, cmd.sector_count);
 			}
 		}
 		else if (g_sata_context.slow_cmd.status == SLOW_CMD_STATUS_PENDING)
@@ -264,6 +277,7 @@ void Main(void)
 			slow_cmd_t *slow_cmd = &g_sata_context.slow_cmd;
 			slow_cmd->status = SLOW_CMD_STATUS_BUSY;
 
+			uart_print("call ata");
 			ata_function = search_ata_function(slow_cmd->code);
 			ata_function(slow_cmd->lba, slow_cmd->sector_count);
 
@@ -276,27 +290,29 @@ void Main(void)
 	}
 }
 
-void HMAC_DELAY(int time)	//us
+void HMAC_DELAY(int time) //us
 {
-   
-    start_interval_measurement(TIMER_CH1, TIMER_PRESCALE_0); //timer start
-    UINT32 rtime;
-    char buf[21];
 
-    do{
-        rtime = 0xFFFFFFFF - GET_TIMER_VALUE(TIMER_CH1);
-	//uart_printf("%d );
-    // Tick to us
-        rtime = (UINT32)((UINT64)rtime * 2 * 1000000 * 
-	    PRESCALE_TO_DIV(TIMER_PRESCALE_0) / CLOCK_SPEED);
-    }
-    while(rtime<time);
+	start_interval_measurement(TIMER_CH1, TIMER_PRESCALE_0); //timer start
+	UINT32 rtime;
+	char buf[21];
+
+	do
+	{
+		rtime = 0xFFFFFFFF - GET_TIMER_VALUE(TIMER_CH1);
+		//uart_printf("%d );
+		// Tick to us
+		rtime = (UINT32)((UINT64)rtime * 2 * 1000000 *
+						 PRESCALE_TO_DIV(TIMER_PRESCALE_0) / CLOCK_SPEED);
+	} while (rtime < time);
 }
 
 UINT32 ptr_diff(UINT32 ftl_id, UINT32 sata_id)
 {
-	if(sata_id >= ftl_id)	return sata_id - ftl_id;
-	else					return NUM_WR_BUFFERS-(ftl_id - sata_id);
+	if (sata_id >= ftl_id)
+		return sata_id - ftl_id;
+	else
+		return NUM_WR_BUFFERS - (ftl_id - sata_id);
 }
 
 void sata_reset(void)

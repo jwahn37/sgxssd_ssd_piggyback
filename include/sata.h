@@ -154,6 +154,11 @@ enum
 	CMD_SGXSSD_WRITE_NOR			= 0x48, /*sgxssd write cmd (piggyback)*/
 	CMD_SGXSSD_WRITE_EXT			= 0x49, /*sgxssd write cmd (piggyback)*/
 
+	CMD_RECOVERY_NOR				= 0x4A,	/*sgxssd recovery cmd*/
+	CMD_RECOVERY_EXT				= 0x4B, /*sgxssd recovery cmd*/
+	CMD_RECOVERY_ALL_NOR			= 0x4C, /*sgxssd all recovery cmd*/
+	CMD_RECOVERY_ALL_EXT			= 0x4D, /*sgxssd all recovery cmd*/
+
 	ATA_READ_FPDMA_QUEUED			= 0x60,	/* Read FPDMA Queued		 */
 	ATA_WRITE_FPDMA_QUEUED			= 0x61,	/* Write FPDMA Queued		 */
 	ATA_EXEDIAG						= 0x90,	/* Execute Drive Diagnostics */

@@ -57,6 +57,7 @@ typedef struct event_queue{
 	UINT32 lba;
 	UINT32 sector_count;
 	UINT32 cmd_type;
+	UINT32 sgx_fd;
 	//UINT32 key;
 	//struct event_queue link;
 }EVENT_Q;

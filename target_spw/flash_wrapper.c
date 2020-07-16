@@ -152,7 +152,11 @@ void nand_page_ptread_to_host(UINT32 const bank, UINT32 const vblock, UINT32 con
         }
     }
     #endif
+
+
     flash_issue_cmd(bank, RETURN_ON_ISSUE);
+
+
 }
 void nand_page_program(UINT32 const bank, UINT32 const vblock, UINT32 const page_num, UINT32 const buf_addr)
 {
