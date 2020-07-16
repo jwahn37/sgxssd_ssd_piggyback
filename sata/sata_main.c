@@ -234,13 +234,13 @@ void Main(void)
 				//	uart_printf("tail lba 0x%x, page idx: %d, pg %d", tail_lba, tail_pageidx,tp);
 				//	uart_printf("1 0x%x 0x%x %d", pid, fid, offset);
 
-				if (pid == 0x11223344)
-					;
-				//	uart_print("1good");
-				else
-				{
-					uart_print("1bad");
-				}
+				// if (pid == 0x11223344)
+				// 	;
+				// //	uart_print("1good");
+				// else
+				// {
+				// 	uart_print("1bad");
+				// }
 
 				//	uart_printf("%x %x %x %x", read_dram_8((UINT32)piggyback_pointer), read_dram_8((UINT32)(&piggyback_pointer[1])), read_dram_8((UINT32)(&piggyback_pointer[2])), read_dram_8((UINT32)(&piggyback_pointer[3])));
 				//	ftl_write(cmd.lba, cmd.sector_count - 1);	//tail (sector)
