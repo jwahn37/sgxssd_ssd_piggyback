@@ -111,8 +111,7 @@ void Main(void)
 {
 	UINT32 recovery_time;
 	UINT32 fid;
-	UINT32 offset;
-
+	static UINT32 offset = 0;
 	while (1)
 	{
 		if (eventq_get_count())
@@ -137,15 +136,15 @@ void Main(void)
 				recovery_time = recv_meta & 0x0000FFFF;
 				fid = (recv_meta & 0XFFFF0000) >> 4;
 
-				uart_printf("recv time/fd %d %d", recovery_time, fid);
+				uart_printf("recv time/fd %x %x", recovery_time, fid);
 
 				UINT32 head_lba = cmd.lba;
 				UINT8 *offset_pointer = RD_BUF_PTR((g_ftl_read_buf_id) % NUM_RD_BUFFERS) + ((head_lba % SECTORS_PER_PAGE) * BYTES_PER_SECTOR);
 
 				uart_printf("lba/size 0x%x/%u", cmd.lba, cmd.sector_count);
-				offset = 0x11111111;
+				//offset = 0x11111111;
 				write_dram_32((UINT32)offset_pointer, offset);
-
+				offset += 32768;
 				//uart_printf("bf ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));
 				
 				//첫번째 페이지는 offset이 저장되었으므로 두번째 페이지로 이동.
@@ -157,7 +156,7 @@ void Main(void)
 				g_ftl_read_buf_id = next_read_buf_id;
 
 				ftl_read(cmd.lba, cmd.sector_count - SECTORS_PER_PAGE);
-				offset = 0x37373737;
+				//offset = 0x37373737;
 				write_dram_32((UINT32)offset_pointer, offset);
 			}
 
