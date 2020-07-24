@@ -234,18 +234,21 @@ void Main(void)
 				//	uart_printf("tail lba 0x%x, page idx: %d, pg %d", tail_lba, tail_pageidx,tp);
 				//	uart_printf("1 0x%x 0x%x %d", pid, fid, offset);
 
-				// if (pid == 0x11223344)
-				// 	;
-				// //	uart_print("1good");
-				// else
-				// {
-				// 	uart_print("1bad");
-				// }
+			
+				if (pid == 0x11223344)
+					;
+				//	uart_print("1good");
+				else
+				{
+					uart_print("1bad");
+				}
 
 				//	uart_printf("%x %x %x %x", read_dram_8((UINT32)piggyback_pointer), read_dram_8((UINT32)(&piggyback_pointer[1])), read_dram_8((UINT32)(&piggyback_pointer[2])), read_dram_8((UINT32)(&piggyback_pointer[3])));
 				//	ftl_write(cmd.lba, cmd.sector_count - 1);	//tail (sector)
 				//	ftl_write(cmd.lba, cmd.sector_count - 8);	//tail
 				//	ftl_write(cmd.lba+8, cmd.sector_count - 8);
+
+				//uart_printf("lba: 0x%x, size: 0x%d %d", cmd.lba, cmd.sector_count, cmd.sector_count - SECTORS_PER_PAGE);
 				ftl_write(cmd.lba, cmd.sector_count - SECTORS_PER_PAGE); //head
 
 				//	uart_printf("last ftl/sata/bm %d %d %d",  g_ftl_write_buf_id, GETREG(SATA_WBUF_PTR), GETREG(BM_WRITE_LIMIT));
